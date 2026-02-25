@@ -21,7 +21,8 @@ class QueryBase:
     # Define an `event_counts` method
     # that receives an `id` argument
     # This method should return a pandas dataframe
-    def event_counts(self, id):
+    @execute_df
+    def event_counts(self, id, model):
 
         # QUERY 1
         # Write an SQL query that groups by `event_date`
@@ -32,10 +33,10 @@ class QueryBase:
         # of id columns used for joining
         # order by the event_date column
         return f"""
-            SELECT event_date, 
-                    SUM(positive_events) positive_events, 
-                    SUM(negative_events) negative_events
-            FROM {self.name}
+            SELECT event_date AS date, 
+                   SUM(positive_events) positive_events, 
+                   SUM(negative_events) negative_events
+            FROM employee_events
             WHERE employee_id = {id}
             GROUP BY event_date
             ORDER BY event_date
@@ -46,7 +47,7 @@ class QueryBase:
     # Define a `notes` method that receives an id argument
     # This function should return a pandas dataframe
     @execute_df
-    def notes(self, id):
+    def notes(self, id, model):
 
         # QUERY 2
         # Write an SQL query that returns `note_date`, and `note`

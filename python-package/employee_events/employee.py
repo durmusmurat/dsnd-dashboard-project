@@ -19,7 +19,7 @@ class Employee(QueryBase):
     # This method should return a list of tuples
     # from an sql execution
     @query
-    def names(self):
+    def names(self, entity_id, model):
         
         # Query 3
         # Write an SQL query
@@ -28,7 +28,7 @@ class Employee(QueryBase):
         # 2. The employee's id
         # This query should return the data
         # for all employees in the database
-        return "SELECT full_name, employee_id FROM employee"
+        return "SELECT first_name || ' ' || last_name, employee_id FROM employee"
     
 
     # Define a method called `username`
@@ -36,7 +36,7 @@ class Employee(QueryBase):
     # This method should return a list of tuples
     # from an sql execution
     @query
-    def username(self, id):
+    def username(self, entity_id, model):
         
         # Query 4
         # Write an SQL query
@@ -44,7 +44,7 @@ class Employee(QueryBase):
         # Use f-string formatting and a WHERE filter
         # to only return the full name of the employee
         # with an id equal to the id argument
-        return f"SELECT full_name FROM employee WHERE employee_id = {id}"
+        return f"SELECT first_name || ' ' || last_name FROM employee WHERE employee_id = {entity_id}"
 
 
     # Below is method with an SQL query
@@ -55,13 +55,13 @@ class Employee(QueryBase):
     # is returns containing the execution of
     # the sql query
     @execute_df
-    def model_data(self, id):
+    def model_data(self, entity_id, model):
 
         return f"""
-                    SELECT SUM(positive_events) positive_events
-                         , SUM(negative_events) negative_events
-                    FROM {self.name}
-                    JOIN employee_events
-                        USING({self.name}_id)
-                    WHERE {self.name}.{self.name}_id = {id}
+                SELECT SUM(positive_events) positive_events
+                     , SUM(negative_events) negative_events
+                FROM {self.name}
+                JOIN employee_events
+                    USING({self.name}_id)
+                WHERE {self.name}.{self.name}_id = {entity_id}
                 """

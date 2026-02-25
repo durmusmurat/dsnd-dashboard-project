@@ -17,7 +17,7 @@ class Team(QueryBase):
     # This method should return
     # a list of tuples from an sql execution
     @query
-    def names(self):
+    def names(self, entity_id, model):
         
         # Query 5
         # Write an SQL query that selects
@@ -32,7 +32,7 @@ class Team(QueryBase):
     # This method should return
     # a list of tuples from an sql execution
     @query
-    def username(self, id):
+    def username(self, entity_id, model):
         
         # Query 6
         # Write an SQL query
@@ -51,18 +51,18 @@ class Team(QueryBase):
     # is returns containing the execution of
     # the sql query
     @execute_df
-    def model_data(self, id):
+    def model_data(self, entity_id, model):
         
         
         return f"""
-            SELECT positive_events, negative_events FROM (
-                    SELECT employee_id
-                         , SUM(positive_events) positive_events
-                         , SUM(negative_events) negative_events
-                    FROM {self.name}
-                    JOIN employee_events
-                        USING({self.name}_id)
-                    WHERE {self.name}.{self.name}_id = {id}
-                    GROUP BY employee_id
-                   )
-                """
+        SELECT positive_events, negative_events FROM (
+                SELECT employee_id
+                     , SUM(positive_events) positive_events
+                     , SUM(negative_events) negative_events
+                FROM team
+                JOIN employee_events
+                    USING(team_id)
+                WHERE team.team_id = {entity_id}  -- Use {entity_id} here, NOT {id}
+                GROUP BY employee_id
+               )
+    """
