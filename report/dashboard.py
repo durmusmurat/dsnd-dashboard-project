@@ -35,6 +35,12 @@ class ReportDropdown(Dropdown):
         #  to the `name` attribute for the model
         self.label = model.name
         
+        # --- THE FIX ---
+        # Ensure entity_id is a string for the component's internal logic
+        # And explicitly pass it into the super() call so the parent class sees it.
+        entity_id = str(entity_id) if entity_id else "1"
+        self.value = entity_id
+        
         # Return the output from the
         # parent class's build_component method
         return super().build_component(entity_id, model)
@@ -93,15 +99,14 @@ class LineChart(MatplotlibViz):
         # in the dataframe to cumulative counts
         df = df.cumsum()
         
-        
         # Set the dataframe columns to the list
         # ['Positive', 'Negative']
         df.columns = ['Positive', 'Negative']
         
         # Initialize a pandas subplot
-        # and assign the figure and axis
-        # to variables
         fig, ax = plt.subplots(figsize=(10, 5))
+        fig.patch.set_facecolor('white')
+        ax.set_facecolor('white')
         
         # call the .plot method for the
         # cumulative counts dataframe
@@ -110,10 +115,6 @@ class LineChart(MatplotlibViz):
         # pass the axis variable
         # to the `.set_axis_styling`
         # method
-        # Use keyword arguments to set 
-        # the border color and font color to black. 
-        # Reference the base_components/matplotlib_viz file 
-        # to inspect the supported keyword arguments
         self.set_axis_styling(ax, bordercolor='black', fontcolor='black')
             
         # Set title and labels for x and y axis
@@ -140,52 +141,35 @@ class BarChart(MatplotlibViz):
 
         # Using the model and asset_id arguments
         # pass the `asset_id` to the `.model_data` method
-        # to receive the data that can be passed to the machine
-        # learning model
         data = model.model_data(entity_id, model)
         
-        fig, ax = plt.subplots()
-        ax.set_facecolor('white') 
+        fig, ax = plt.subplots(figsize=(10, 5))
+        fig.patch.set_facecolor('white')
+        ax.set_facecolor('white')
 
-        # 3. NOW check if data is empty
         if data.empty:
-            ax.clear()
-            ax.text(0.5, 0.5, "No data available for this selection", 
-                    ha='center', va='center', transform=ax.transAxes)
-            ax.set_xticks([])
-            ax.set_yticks([])
-            return fig 
-        # or whatever your component expects to return
+            ax.text(0.5, 0.5, "No data available", ha='center', va='center')
+            return fig
+
         # Using the predictor class attribute
         # pass the data to the `predict_proba` method
         probabilities = self.predictor.predict_proba(data)
         
-
         # Index the second column of predict_proba output
-        # The shape should be (<number of records>, 1)
         risk_probs = probabilities[:, 1]
-        
         
         # Below, create a `pred` variable set to
         # the number we want to visualize
-        #
-        # If the model's name attribute is "team"
-        # We want to visualize the mean of the predict_proba output
-        if model.name == "team":
+        if model.name.lower() == "team":
             pred = risk_probs.mean()
-            
         # Otherwise set `pred` to the first value
-        # of the predict_proba output
         else:
             pred = risk_probs[0]
         
-        # Initialize a matplotlib subplot
-        fig, ax = plt.subplots(figsize=(10, 5))
-        
-        # Run the following code unchanged
+        # Using the `ax` variable, call the .barh method
         ax.barh([''], [pred])
         ax.set_xlim(0, 1)
-        ax.set_title('Predicted Recruitment Risk', fontsize=20)
+        ax.set_title('Predicted Recruitment Risk', fontsize=20, color='black')
         
         # pass the axis variable
         # to the `.set_axis_styling`
@@ -200,8 +184,6 @@ class Visualizations(CombinedComponent):
 
     # Set the `children`
     # class attribute to a list
-    # containing an initialized
-    # instance of `LineChart` and `BarChart`
     children = [LineChart(), BarChart()]
 
     # Leave this line unchanged
@@ -212,12 +194,10 @@ class Visualizations(CombinedComponent):
 class NotesTable(DataTable):
 
     # Overwrite the `component_data` method
-    # using the same parameters as the parent class
     def component_data(self, entity_id, model):
         
         # Using the model and entity_id arguments
-        # pass the entity_id to the model's .notes 
-        # method. Return the output
+        # pass the entity_id to the model's .notes method
         return model.notes(entity_id, model)
     
 
@@ -238,6 +218,12 @@ class DashboardFilters(FormGroup):
             id="selector",
             name="user-selection")
         ]
+
+    # FIX: Synchronize the radio button with the page model
+    def build_component(self, entity_id, model):
+        # Force the radio to match the model class (Employee/Team)
+        self.children[0].value = model.__class__.__name__
+        return super().build_component(entity_id, model)
     
 # Create a subclass of CombinedComponents
 # called `Report`
@@ -245,9 +231,6 @@ class Report(CombinedComponent):
 
     # Set the `children`
     # class attribute to a list
-    # containing initialized instances 
-    # of the header, dashboard filters,
-    # data visualizations, and notes table
     children = [Header(), DashboardFilters(), Visualizations(), NotesTable()]
 
 # Initialize a fasthtml app 
@@ -257,58 +240,31 @@ app, rt = fast_app()
 report = Report()
 
 
-# Create a route for a get request
-# Set the route's path to the root
+# Route for root path
 @rt('/')
-def get():
-
-    # Call the initialized report
-    # pass the integer 1 and an instance
-    # of the Employee class as arguments
-    # Return the result
+def get_root():
     return report.call_children(1, Employee())
 
-# Create a route for a get request
-# Set the route's path to receive a request
-# for an employee ID so `/employee/2`
-# will return the page for the employee with
-# an ID of `2`. 
-# parameterize the employee ID 
-# to a string datatype
+# Route for employee view
 @rt('/employee/{id}')
-def get(id: str):
-
-    # Call the initialized report
-    # pass the ID and an instance
-    # of the Employee SQL class as arguments
-    # Return the result
+def get_emp(id: str):
+    # Pass the ID through to call_children explicitly
     return report.call_children(id, Employee())
 
-# Create a route for a get request
-# Set the route's path to receive a request
-# for a team ID so `/team/2`
-# will return the page for the team with
-# an ID of `2`. 
-# parameterize the team ID 
-# to a string datatype
+# Route for team view
 @rt('/team/{id}')
-def get(id: str):
-
-    # Call the initialized report
-    # pass the id and an instance
-    # of the Team SQL class as arguments
-    # Return the result
+def get_tm(id: str):
+    # Pass the ID through to call_children explicitly
     return report.call_children(id, Team())
 
 
 # Keep the below code unchanged!
-@app.get('/update_dropdown{r}')
-def update_dropdown(r):
+@app.get('/update_dropdown')
+def update_dropdown(profile_type: str):
     dropdown = DashboardFilters.children[1]
-    print('PARAM', r.query_params['profile_type'])
-    if r.query_params['profile_type'] == 'Team':
+    if profile_type == 'Team':
         return dropdown(None, Team())
-    elif r.query_params['profile_type'] == 'Employee':
+    elif profile_type == 'Employee':
         return dropdown(None, Employee())
 
 
@@ -323,6 +279,5 @@ async def update_data(r):
     elif profile_type == 'Team':
         return RedirectResponse(f"/team/{id}", status_code=303)
     
-
 
 serve()
